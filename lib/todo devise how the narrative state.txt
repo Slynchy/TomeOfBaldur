@@ -1,0 +1,17 @@
+todo: devise how the narrative state is stored in saved data, and how it is progressed and shown.
+
+type TScriptID = string;
+type TFlagID = string;
+interface INarrativeState {
+	seenConversations: Array<TScriptID>;
+	flags: Array<TFlagID>;
+}
+NarrativeSingleton.getContactState(_state: INarrativeState): IContactStatus[];
+NarrativeSingleton.loadScript(_id: TScriptID, _state: INarrativeState): Promise<M22Script>;
+Win95MessagingWindow.showChat(
+	_script: M22Script
+): void;
+
+Online = Conversation available
+Away = Conversation exhausted
+Offline = No conversation possible
