@@ -1,0 +1,8 @@
+.idea
+node_modules
+dist
+temp
+src/assets/sprites/Items
+src/assets/sprites/Portraits
+src/assets/sprites/Shared
+src/assets/sprites/Tooltips
