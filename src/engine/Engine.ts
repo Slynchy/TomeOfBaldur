@@ -55,6 +55,7 @@ import { JSONLoader } from "./Loaders/JSONLoader";
 import { WASMLoader } from "./Loaders/WASMLoader";
 import { GameAnalytics } from "./Analytics/GameAnalytics";
 import { AnalyticsEventID } from "../game/Constants/AnalyticsEventIDs";
+import { CapacitorSDK } from "./PlatformSDKs/CapacitorSDK";
 
 // const ENABLE_3D: boolean = false;
 
@@ -229,6 +230,11 @@ export class Engine {
                 });
                 savers.push(new FBInstantSaver());
                 analyticsModules.push(new FacebookAnalytics());
+                break;
+            case "capacitor":
+                savers.push(new LocalStorageSaver());
+                this.platformSdk = new CapacitorSDK();
+                analyticsModules.push(new GameAnalytics());
                 break;
             case "offline":
             default:
