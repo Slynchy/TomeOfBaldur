@@ -18,6 +18,7 @@ import { BG3SearchInterface } from "./BG3SearchInterface";
 import { TJsonBG3 } from "../Types/IJsonBg3";
 import { LoaderType } from "../../config/BootAssets";
 import { BG3CategorySingleton } from "../Logic/BG3CategorySingleton";
+import { JSON_URL } from "../Constants/SharedConstants";
 
 export class GameInit extends State {
 
@@ -129,7 +130,7 @@ export class GameInit extends State {
         ) {
             promises.push(
                 fetch(
-                    "https://raw.githubusercontent.com/Slynchy/bg3-item-index-generator/main/output.json"
+                    JSON_URL
                 )
                 .then(
                     (e) => e?.json() || Promise.resolve(null)
@@ -198,9 +199,11 @@ export class GameInit extends State {
         //         new BG3Index(),
         //         getQueryParams(window.location.href)
         //     );
-        window.addEventListener("popstate", (ev) => {
-            if(ev.state && ev.state.path) {
-                const queryParams = getQueryParams(ev.state.path);
+        _engine.platformSDK.lockOrientation("portrait");
+
+        _engine.platformSDK.addOnBackCallback(() => {
+            if(window.location.href) {
+                const queryParams = getQueryParams(window.location.href);
                 if(
                     queryParams["itemId"]
                 ) {
@@ -215,6 +218,11 @@ export class GameInit extends State {
                         new BG3SearchInterface(),
                         queryParams
                     );
+                } else {
+                    ENGINE.changeState(
+                        new BG3SearchInterface(),
+                        queryParams
+                    );
                 }
             } else {
                 ENGINE.changeState(
@@ -223,12 +231,7 @@ export class GameInit extends State {
                 );
             }
         });
-        // let func = window.history.pushState;
-        // window.history.pushState = function(state, ...args) {
-        //     console.log(state);
-        //     // Call the original method
-        //     return func.apply(window.history, args);
-        // };
+
         const queryParams = getQueryParams(window.location.href);
         if(
             queryParams["itemId"]

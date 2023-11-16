@@ -1,7 +1,15 @@
 import { Engine, HelperFunctions, State } from "../../tsthree";
 import { SearchbarPrefab } from "../Prefabs/SearchBarPrefab";
 import { BG3Index } from "./BG3Index";
-import { Container, DisplayObject, Sprite, Text, InteractionEvent as PIXIInteractionEvent, TextStyle } from "pixi.js";
+import {
+    Container,
+    DisplayObject,
+    Sprite,
+    Text,
+    InteractionEvent as PIXIInteractionEvent,
+    TextStyle,
+    Graphics
+} from "pixi.js";
 import { tsthreeConfig } from "../../config/tsthreeConfig";
 import { TJsonBG3 } from "../Types/IJsonBg3";
 import TaggedText from "pixi-tagged-text";
@@ -11,6 +19,7 @@ import { buttonify } from "../../engine/HelperFunctions/buttonify";
 import { GoBackButtonPrefab } from "../Prefabs/GoBackButtonPrefab";
 import { TEntryId } from "../Types/SharedTypes";
 import { InteractionEvent } from "../../engine/Types/InteractionEvent";
+import { changeToResult } from "../Logic/changeToResult";
 
 // todo: scale with device height
 const MAX_SEARCH_RESULTS_PER_PAGE = 10;
@@ -37,6 +46,14 @@ export class BG3SearchInterface extends State {
     createSearchResultsContainer(): ISearchResultsElements {
         const container = new Container();
 
+        const selectObjContainer = new Container();
+        const selectObj = new Graphics();
+        selectObj.lineStyle(1, 0xb0651a, 0.3);
+        selectObj.drawCircle(0, 16, 14);
+        selectObjContainer.addChild(selectObj);
+        container.addChild(selectObjContainer);
+        selectObjContainer.visible = false;
+
         const resultText = new Text("", new TextStyle({
                 align: "center",
                 fontSize: 24,
@@ -51,25 +68,62 @@ export class BG3SearchInterface extends State {
                 const pos = ev.data.getLocalPosition(
                     resultText
                 );
-                const selectedElement = Math.floor(pos.y / (
-                    (resultText.height / MAX_SEARCH_RESULTS_PER_PAGE)
-                ));
+                const selectedElement = Math.min(
+                    Math.floor(
+                        pos.y / (
+                            (resultText.height / Math.min(
+                                MAX_SEARCH_RESULTS_PER_PAGE,
+                                this.searchResults.slice(
+                                    this.currentSearchPage * MAX_SEARCH_RESULTS_PER_PAGE
+                                ).length
+                            ))
+                        )
+                    )
+                );
                 const itemId = this.searchResults[
                     (
                         this.currentSearchPage * MAX_SEARCH_RESULTS_PER_PAGE
                     ) + selectedElement
                 ];
+                console.log(selectedElement);
+                console.log(itemId);
                 if(
                     (
                         ENGINE.getJSON("IndexJSON") as TJsonBG3
                     )[itemId]
                 ) {
-                    this.changeToResult(itemId);
+                    changeToResult(itemId);
                 }
+            },
+            onPointerOver: () => {
+                selectObjContainer.visible = true;
+                selectObj.width = resultText.width * 0.8;
+            },
+            onPointerOut: () => {
+                selectObjContainer.visible = false;
+            },
+            onPointerMove: (ev) => {
+                if(!selectObjContainer.visible) return;
+                const pos = ev.data.getLocalPosition(
+                    resultText
+                );
+                const selectedElement = Math.floor(pos.y / (
+                    (
+                        resultText.height / Math.min(
+                            MAX_SEARCH_RESULTS_PER_PAGE,
+                            (this.searchResults.length - (this.currentSearchPage * MAX_SEARCH_RESULTS_PER_PAGE))
+                        )
+                    )
+                ));
+                selectObjContainer.position.set(0, selectedElement * 32);
             }
         });
 
         const goBackText = new GoBackButtonPrefab();
+        goBackText.position.set(
+            -(tsthreeConfig.width * 0.5),
+            0,
+        );
         container.addChild(goBackText);
 
         const pageCountText = new Text(
@@ -177,15 +231,44 @@ export class BG3SearchInterface extends State {
                 )
             )
             .forEach(
-                (item, index) => {
+                (item, index, arr) => {
                     const data = (
                         ENGINE.getJSON("IndexJSON") as TJsonBG3
                     )[item];
+
+                    let rarityStr: string = "";
+                    if(data?.rarity) {
+                        switch(data.rarity) {
+                            case "Legendary":
+                                rarityStr = " 🟡";
+                                break;
+                            case "Rare":
+                                rarityStr = " 🔵";
+                                break;
+                            case "VeryRare":
+                                rarityStr = " 🔴";
+                                break;
+                            case "Uncommon":
+                                rarityStr = " 🟢";
+                                break;
+                            default:
+                                rarityStr = " ⚪";
+                                break;
+                        }
+                    }
+
                     // if(data) {
                         str += (
                             data?.name ||
                             item
-                        ) + (index !== MAX_SEARCH_RESULTS_PER_PAGE-1 ? "\n" : "");
+                        ) +
+                        ( rarityStr ) +
+                        (
+                            (
+                                index !== MAX_SEARCH_RESULTS_PER_PAGE-1 &&
+                                index !== arr.length-1
+                            ) ? "\n" : ""
+                        );
                         // str += item + "\n";
                     // }
                 }
@@ -199,23 +282,6 @@ export class BG3SearchInterface extends State {
             }/${
                 Math.floor(this.searchResults.length / MAX_SEARCH_RESULTS_PER_PAGE) + 1
             }`;
-    }
-
-    changeToResult(id: TEntryId): void {
-        if (history.pushState) {
-            const newurl =
-                window.location.protocol + "//" +
-                window.location.host + window.location.pathname +
-                `?itemId=${id}`;
-            window.history.pushState({path: newurl},'', newurl);
-        }
-        ENGINE.changeState(
-            new BG3Index(),
-            {
-                itemId: id,
-                cameFromSearch: true,
-            }
-        );
     }
 
     onStep(_engine: Engine): void {
@@ -307,7 +373,7 @@ export class BG3SearchInterface extends State {
                     e[0].id &&
                     (_engine.getJSON("IndexJSON") as TJsonBG3)[e[0].id]
                 ) {
-                    this.changeToResult(e[0].id);
+                    changeToResult(e[0].id);
                 }
             },
             _engine.getJSON("IndexJSON")
@@ -327,13 +393,13 @@ export class BG3SearchInterface extends State {
                 align: "center",
                 wordWrap: true,
                 wordWrapWidth: this.searchBarPrefab.width,
-                fill: "#323aa2",
+                fill: "#4c52a2",
                 lineSpacing: 4,
                 fontFamily: GAME_FONT,
             },
             link: {
                 underlineThickness: 1,
-                underlineColor: "#323aa2",
+                underlineColor: "#4c52a2",
                 underlineOffset: 0,
             }
         }, {
@@ -356,11 +422,11 @@ export class BG3SearchInterface extends State {
                         });
                     },
                     onPointerOut: () => {
-                        e.style.fill = "#323aa2";
+                        e.style.fill = "#4c52a2";
                         this.listLinksText.textFields.forEach((t) => {
                             // @ts-ignore
                             if(t.style?.categoryId === targetUrl) {
-                                t.style.fill = "#323aa2";
+                                t.style.fill = "#4c52a2";
                             }
                         });
                     }

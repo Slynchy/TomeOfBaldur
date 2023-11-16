@@ -11,6 +11,8 @@ import { buttonify } from "../../engine/HelperFunctions/buttonify";
 import { BG3SearchInterface } from "./BG3SearchInterface";
 import { GAME_DEBUG_MODE } from "../../engine/Constants/Constants";
 import { GoBackButtonPrefab } from "../Prefabs/GoBackButtonPrefab";
+import { changeToResult } from "../Logic/changeToResult";
+import { extractNumFromBoostStr } from "../Logic/extractNumFromBoostStr";
 
 const front_frame_keys: Record<TRarity, string> = {
     Legendary: "rarityFrame_legendary_front",
@@ -92,6 +94,10 @@ export class BG3Index extends State {
             Math.floor( 48 + 128),
         );
         const goBackText = new GoBackButtonPrefab(_params);
+        goBackText.position.set(
+            (tsthreeConfig.width * -0.5),
+            -this.mainFrameContainer.position.y + goBackText.height + 16
+        );
         this.mainFrameContainer.addChild(goBackText);
 
         this.mainBgFrame = new Graphics();
@@ -296,6 +302,12 @@ export class BG3Index extends State {
             );
             proficiencyIconContainer.addChild(ret.container);
             this.proficiencySlots.push(ret);
+            const _i = i;
+            buttonify(ret.container, {
+                onFire: () => {
+                    changeToResult(this.proficiencySlots[_i].id);
+                }
+            });
         }
         this.contentsContainer.addChild(proficiencyIconContainer);
 
@@ -309,9 +321,16 @@ export class BG3Index extends State {
         this.boostIconSlots = [];
         for(let i = 0; i < 4; i++) {
             const ret = BG3Index.createSpellAbilitySlot();
+            HelperFunctions.makeInteractive(ret.container);
             ret.container.visible = false;
             boostIconContainer.addChild(ret.container);
             this.boostIconSlots.push(ret);
+            const _i = i;
+            buttonify(ret.container, {
+                onFire: () => {
+                    changeToResult(this.boostIconSlots[_i].id);
+                }
+            });
         }
         this.contentsContainer.addChild(boostIconContainer);
 
@@ -706,7 +725,7 @@ export class BG3Index extends State {
         _jsonData: TJsonBG3
     ) {
         const data = _jsonData[_key];
-        this.titleText.text = data.name;
+        this.titleText.text = data.name || _key;
         if((data.otherData["SpellProperties"]?.indexOf("AI_ONLY") || -1) !== -1) {
             this.titleText.text += " (AI only)";
         }
@@ -797,16 +816,20 @@ export class BG3Index extends State {
             const passiveData: IJsonBG3Entry[] =
                 passives.map((e) => _jsonData[e]).filter((e) => Boolean(e));
             passiveData.forEach((e) => {
-                let desc = e.description;
+                let desc = e.description.replace(/<br>/g, "\n");
                 let name = e.name;
                 let inheritedPassiveData = e;
                 const isHidden = (e.otherData["Properties"] &&
                     e.otherData["Properties"].split(";").indexOf("IsHidden") !== -1);
+                if(isHidden) name = "(Hidden) " + name;
                 if(
-                    isHidden ||
+                    // isHidden ||
                     !e.description
                 ) {
-                    if(e.inheritsFrom && !isHidden) {
+                    if(
+                        // !isHidden &&
+                        e.inheritsFrom
+                    ) {
                         while(
                             inheritedPassiveData.inheritsFrom &&
                             !inheritedPassiveData.description
@@ -856,14 +879,51 @@ export class BG3Index extends State {
                 return e.otherData["Boosts"];
             });
         if(allBoosts.length > 0) {
+            // This might seem unneeded but it basically merges them all into one
             allBoosts = allBoosts.reduce((a, b) => (a + ";" + b));
-            const boostSplit = allBoosts.split(";");
+            const boostSplit = [...new Set(allBoosts.split(";"))];
+
+            const handledNumericalBoosts: Record<
+                string,
+                { type: string, value: number }[]
+            > = {};
             boostSplit.forEach((boostStr) => {
                 let paramData: string | null =
                     boostStr.match(/\(([^)]+)\)/)?.[1];
                 const splitParams =
                     paramData?.split(",") || [];
                 const funcName = boostStr.substring(0, boostStr.indexOf("("));
+
+                // This code requires the array to be sorted deepest to shallowest.
+                // As in, the actual item data is first, and all inherited data
+                // follows that.
+                let value: number | null =
+                    extractNumFromBoostStr(boostStr);
+                if(
+                    value !== null
+                ) {
+                    if(
+                        !handledNumericalBoosts[funcName]
+                    ) {
+                        handledNumericalBoosts[funcName] = [
+                            {type: paramData[0], value: value}
+                        ];
+                    } else {
+                        // check if current boost is higher
+                        if(handledNumericalBoosts[funcName].find((e) => {
+                            return e.type === paramData[0] && e.value < value;
+                        })) {
+                            // it's higher, ignore it
+                            return;
+                        } else {
+                            // it's not higher, we keep it
+                        }
+                        handledNumericalBoosts[funcName].push(
+                            {type: paramData[0], value: value}
+                        );
+                    }
+                }
+
                 switch(
                     funcName
                 ) {
@@ -909,6 +969,13 @@ export class BG3Index extends State {
                             }">${splitParams[0].trim()}</LSTag> checks\n\n`;
                         }
                         break;
+                    case "ActionResource":
+                        switch(splitParams[0]) {
+                            case "Movement":
+                                str += `<LSTag Tooltip="Movement">Movement Speed</LSTag> +${splitParams[1]}m\n\n`;
+                                break;
+                        }
+                        break;
                     case "UnlockSpell":
                         // handled below
                         break;
@@ -933,6 +1000,9 @@ export class BG3Index extends State {
                         if(splitParams[2] === "Never") {
                             str += "Attackers can't land <LSTag>Critical Hits</LSTag> on the wearer.\n\n";
                         }
+                        break;
+                    case "Resistance": // (Damagetype, resistant/not resistant)
+                        str += `Grants <LSTag Tooltip="Resistance">Resistance</LSTag> to ${splitParams[0]} Damage`;
                         break;
                     default:
                         // if(GAME_DEBUG_MODE)
@@ -1173,12 +1243,9 @@ export class BG3Index extends State {
             this.descriptionText.visible = true;
             this.descriptionIcon.visible = true;
 
-            let inhrDesc = data.description;
-            while(!inhrDesc && data.inheritsFrom) {
-                inhrDesc = allInheritedData.find((d) => {
-                    return d.description;
-                }).description;
-            }
+            let inhrDesc = allInheritedData.find((d) => {
+                return d.description;
+            })?.description || "";
             // alert(inhrDesc);
 
             let desc: string = inhrDesc.replace(/<br>/g, "\n");
@@ -1192,7 +1259,8 @@ export class BG3Index extends State {
             if(
                 data.type == "SpellData" ||
                 data.type == "PassiveData" ||
-                data.type == "StatusData"
+                data.type == "StatusData" ||
+                !desc
             ) {
                 this.aspectsText.text += `\n\n${
                     desc
@@ -1240,7 +1308,7 @@ export class BG3Index extends State {
         } else {
             this.itemIdText.text = "";
         }
-        document.getElementsByTagName("title")[0].text = `${data.name} - Tome of Baldur`;
+        document.getElementsByTagName("title")[0].text = `${data.name || _key} - Tome of Baldur`;
 
         // Damage
         let dmgData: IJsonBG3Entry = null;
@@ -1425,6 +1493,10 @@ export class BG3Index extends State {
             this.ACText.visible = false;
         }
         if(
+            this.damageDieMain.visible == false
+        ) {
+            this.aspectsText.position.set(this.aspectsText.x, this.damageDieMain.y);
+        } else if(
             this.damageDieMain.texture ==
             ENGINE.getTexture(`ico_AC_primary`)
         ) {
@@ -1432,20 +1504,43 @@ export class BG3Index extends State {
         } else {
             this.aspectsText.position.set(this.aspectsText.x, this.damageDieMain.y + 70);
         }
-        this.weaponEnchantmentContainer.position.set(
-            this.dippableIcon.visible ? 30 : -26,
-            this.aspectsText.y + this.aspectsText.textContainer.height + 16
-        );
 
-        this.boostIconContainer.position.set(
-            this.boostIconContainer.x,
-            this.weaponEnchantmentContainer.y + this.weaponEnchantmentContainer.height + 18
-        );
+        if(this.aspectsText.textContainer.height === 0) {
+            this.weaponEnchantmentContainer.position.set(
+                this.dippableIcon.visible ? 30 : -26,
+                this.aspectsText.y
+            );
+        } else {
+            this.weaponEnchantmentContainer.position.set(
+                this.dippableIcon.visible ? 30 : -26,
+                this.aspectsText.y + (this.aspectsText.textContainer.height) + 16
+            );
+        }
 
-        this.proficiencyIcon.position.set(
-            this.proficiencyIcon.position.x,
-            this.boostIconContainer.y + this.boostIconContainer.height - 1
-        );
+        if(this.weaponEnchantmentContainer.height === 0) {
+            this.boostIconContainer.position.set(
+                this.boostIconContainer.x,
+                this.weaponEnchantmentContainer.y + 16
+            );
+        } else {
+            this.boostIconContainer.position.set(
+                this.boostIconContainer.x,
+                this.weaponEnchantmentContainer.y + ((this.weaponEnchantmentContainer.height)) + 16
+                + (this.boostIconContainer.height)
+            );
+        }
+
+        if(this.boostIconContainer.height === 0) {
+            this.proficiencyIcon.position.set(
+                this.proficiencyIcon.position.x,
+                this.boostIconContainer.y - 64  + this.weaponEnchantmentContainer.height
+            );
+        } else {
+            this.proficiencyIcon.position.set(
+                this.proficiencyIcon.position.x,
+                this.boostIconContainer.y + this.boostIconContainer.height
+            );
+        }
         this.proficiencyText.position.set(
             this.proficiencyText.position.x,
             this.proficiencyIcon.y + 17
@@ -1517,7 +1612,7 @@ export class BG3Index extends State {
     }
 
     preload(_engine: Engine): Promise<void> {
-        const assets: typeof BootAssets = [
+        // const assets: typeof BootAssets = [
             // {
             //     key: "Action_Cleave_New",
             //     type: LoaderType.PIXI,
@@ -1538,7 +1633,7 @@ export class BG3Index extends State {
             //     type: LoaderType.PIXI,
             //     path: "sprites/Items/Item_WPN_HUM_Battleaxe_A_1.png",
             // },
-        ];
+        // ];
 
 
         return Promise.allSettled([
