@@ -51,6 +51,7 @@ const MODULE_RULES = [
 ];
 
 const COPY_PLUGIN_SETTINGS = [
+    {from: "src/index.html", to: "./index.html"},
     {from: "src/assets", to: "./assets"},
     {from: "src/config/fbapp-config.json", to: "./fbapp-config.json"},
 ];
