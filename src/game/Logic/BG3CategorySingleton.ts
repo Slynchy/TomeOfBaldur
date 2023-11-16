@@ -17,9 +17,9 @@ export enum BG3Categories {
     "Ranged Main Weapon",
     "Melee Main Weapon",
     "Melee Offhand Weapon",
-    VanityBody,
-    VanityBoots,
-    MusicalInstrument,
+    // VanityBody,
+    // VanityBoots,
+    // MusicalInstrument,
 
     // items by Armor Class
     LightArmour,
@@ -52,8 +52,8 @@ export class BG3CategorySingleton {
         [BG3Categories.UNKNOWN]: [],
         [BG3Categories.Amulets]: [],
         [BG3Categories.Rings]: [],
-        [BG3Categories.VanityBody]: [],
-        [BG3Categories.VanityBoots]: [],
+        // [BG3Categories.VanityBody]: [],
+        // [BG3Categories.VanityBoots]: [],
         [BG3Categories["Ranged Main Weapon"]]: [],
         [BG3Categories["Melee Main Weapon"]]: [],
         // [BG3Categories["Ranged Offhand Weapon"]]: [],
@@ -64,7 +64,7 @@ export class BG3CategorySingleton {
         [BG3Categories.Boots]: [],
         [BG3Categories.Underwear]: [],
         [BG3Categories.Chests]: [],
-        [BG3Categories.MusicalInstrument]: [],
+        // [BG3Categories.MusicalInstrument]: [],
 
         [BG3Categories.LightArmour]: [],
         [BG3Categories.MedArmour]: [],
@@ -124,15 +124,15 @@ export class BG3CategorySingleton {
                     }
                     if(rootSlotData) {
                         switch(rootSlotData.otherData["Slot"]) {
-                            case "MusicalInstrument":
-                                cats[BG3Categories["MusicalInstrument"]].push(e);
-                                break;
-                            case "VanityBody":
-                                cats[BG3Categories["VanityBody"]].push(e);
-                                break;
-                            case "VanityBoots":
-                                cats[BG3Categories["VanityBoots"]].push(e);
-                                break;
+                            // case "MusicalInstrument":
+                            //     cats[BG3Categories["MusicalInstrument"]].push(e);
+                            //     break;
+                            // case "VanityBody":
+                            //     cats[BG3Categories["VanityBody"]].push(e);
+                            //     break;
+                            // case "VanityBoots":
+                            //     cats[BG3Categories["VanityBoots"]].push(e);
+                            //     break;
                             case "Melee Offhand Weapon":
                                 cats[BG3Categories["Melee Offhand Weapon"]].push(e);
                                 break;
