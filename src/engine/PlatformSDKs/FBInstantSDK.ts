@@ -35,6 +35,16 @@ export class FBInstantSDK extends PlatformSDK {
         });
     }
 
+    public lockOrientation(_orientation: "portrait" | "landscape"): Promise<boolean> {
+        console.warn("FBInstantSDK.lockOrientation() is not supported.");
+        return Promise.resolve(true);
+    }
+
+    public unlockOrientation(): Promise<boolean> {
+        console.warn("FBInstantSDK.unlockOrientation() is not supported.");
+        return Promise.resolve(true);
+    }
+
     private _contextCache: IContextCache = {
         id: "",
         type: ContextType.SOLO // assume solo then correct later
@@ -42,6 +52,11 @@ export class FBInstantSDK extends PlatformSDK {
 
     constructor() {
         super();
+    }
+
+    public addOnBackCallback(cb: () => void): void {
+        // window.addEventListener('popstate', cb, false);
+        console.warn("FBInstantSDK.addOnBackCallback() not supported");
     }
 
     public isAdsSupported(): boolean {

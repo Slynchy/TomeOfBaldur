@@ -10,6 +10,7 @@ import { uid } from "../HelperFunctions/uid";
 import { IAPNames, IAPProductID } from "../../game/Constants/IAPData";
 import CustomUpdatePayload = FBInstant.CustomUpdatePayload;
 import { tsthreeConfig } from "../../config/tsthreeConfig";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 
 export class DummySDK extends PlatformSDK {
 
@@ -36,11 +37,23 @@ export class DummySDK extends PlatformSDK {
         }
     }
 
+    public lockOrientation(_orientation: "portrait" | "landscape"): Promise<boolean> {
+        return Promise.resolve(true);
+    }
+
+    public unlockOrientation(): Promise<boolean> {
+        return Promise.resolve(true);
+    }
+
     public sendCustomUpdateToUserID(
         _uid: string,
         _payload: CustomUpdatePayload
     ): Promise<boolean> {
         return Promise.resolve(true);
+    }
+
+    public addOnBackCallback(cb: () => void): void {
+        window.addEventListener('popstate', cb, false);
     }
 
     public addOnPauseCallback(cb: () => void): void {

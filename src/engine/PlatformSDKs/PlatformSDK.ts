@@ -16,6 +16,9 @@ export abstract class PlatformSDK {
      */
     public abstract initialize(): Promise<void>;
 
+    public abstract lockOrientation(_orientation: "portrait" | "landscape"): Promise<boolean>;
+    public abstract unlockOrientation(): Promise<boolean>;
+
     public abstract createContext(_suggestedPlayerID: string | Array<string> | null): Promise<void>;
 
     /**
@@ -34,6 +37,8 @@ export abstract class PlatformSDK {
      * @param _progress The actual progress to set, not increment
      */
     public abstract setLoadingProgress(_progress: number): Promise<void>;
+
+    public abstract addOnBackCallback(cb: () => void): void;
 
     public abstract addOnPauseCallback(cb: () => void): void;
     public abstract addOnResumeCallback(cb: () => void): void;
