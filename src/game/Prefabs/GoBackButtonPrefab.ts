@@ -22,8 +22,8 @@ export class GoBackButtonPrefab extends GameObject {
                 fill: "#D7D4CA"
             })
         );
-        goBackText.anchor.set(1, 1);
-        goBackText.position.set(-128, -16);
+        goBackText.anchor.set(0, 1);
+        goBackText.position.set(0, -16);
         this.addChild(goBackText);
         HelperFunctions.makeInteractive(goBackText);
         buttonify(goBackText, {
@@ -34,7 +34,7 @@ export class GoBackButtonPrefab extends GameObject {
                 goBackText.style.fill = "#D7D4CA";
             },
             onFire: () => {
-                if(_paramsRef &&_paramsRef["cameFromSearch"]) {
+                if(_paramsRef && _paramsRef["origin"]) {
                     window.history.back();
                 } else {
                     const url = new URL(window.location.href);
