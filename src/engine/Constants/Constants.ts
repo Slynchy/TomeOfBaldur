@@ -1,4 +1,4 @@
-export const GAME_DEBUG_MODE: boolean = true;
+export const GAME_DEBUG_MODE: boolean = false;
 export const ENGINE_DEBUG_MODE: boolean = false;
 export const SCENE_DEBUG_MODE: boolean = false;
 export const MASK_DEBUG_MODE: boolean = false;
